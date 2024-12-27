@@ -40,4 +40,50 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+CHIP CPU {
+
+    IN  inM[16],         // M value input (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current 
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0)
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // Address of next instruction
+
+    PARTS:
+    // Decode instruction
+    Not(in=instruction[15], out=isAInstruction);
+    Mux16(a=instruction, b=inM, sel=isAInstruction, out=decodedInstruction);
+
+    // A Register
+    Or(a=isAInstruction, b=instruction[5], out=loadA);
+    ARegister(in=decodedInstruction, load=loadA, out=addressM, out[0..15]=aOut);
+
+    // D Register
+    DRegister(in=decodedInstruction, load=instruction[4], out=dOut);
+
+    // ALU Computation
+    Mux16(a=aOut, b=inM, sel=instruction[12], out=aluY);
+    ALU(x=dOut, y=aluY, 
+        zx=instruction[11], nx=instruction[10], 
+        zy=instruction[9], ny=instruction[8], 
+        f=instruction[7], no=instruction[6], 
+        out=outM, zr=zeroFlag, ng=negFlag);
+
+    // Determine writeM
+    And(a=instruction[3], b=instruction[15], out=writeM);
+
+    // Determine jump condition
+    Not(in=zeroFlag, out=notZero);
+    Or(a=negFlag, b=zeroFlag, out=lessOrEqual);
+    Or(a=instruction[2], b=instruction[1], out=anyJump);
+    And(a=anyJump, b=instruction[15], out=jump);
+
+    // Program Counter
+    PC(in=aOut, load=jump, inc=true, reset=reset, out=pc);
+}
+
 }
