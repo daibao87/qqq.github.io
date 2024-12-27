@@ -27,5 +27,37 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // Put your code here:CHIP Memory {
+    IN in[16],          // Data input
+        load,           // Write enable
+        address[15];    // Address input (15 bits)
+
+    OUT out[16];        // Data output
+
+    PARTS:
+    // Split the `load` signal for RAM, Screen, and Keyboard
+    DMux(in=load, sel=address[14], a=ramLoad, b=screenOrKbdLoad);
+    DMux(in=screenOrKbdLoad, sel=address[13], a=screenLoad, b=nothing);
+
+    // RAM16K: handles addresses 0 to 16383
+    RAM16K(in=in, load=ramLoad, address=address[0..13], out=ramOut);
+
+    // Screen: handles addresses 16384 to 24575
+    Screen(in=in, load=screenLoad, address=address[0..12], out=screenOut);
+
+    // Keyboard: read-only at address 24576
+    Keyboard(out=kbdOut);
+
+    // Ensure address bits [0..12] are all 0 when accessing the keyboard
+    Or8Way(in=address[0..7], out=notKbd1);
+    Or8Way(in[0..4]=address[8..12], in[5..7]=false, out=notKbd2);
+    Or(a=notKbd1, b=notKbd2, out=notKbd);
+    Mux16(a=kbdOut, b=false, sel=notKbd, out=kbdFinalOut);
+
+    // Select between RAM, Screen, and Keyboard outputs
+    Mux16(a=ramOut, b=screenOrKbdOut, sel=address[14], out=out);
+    Mux16(a=screenOut, b=kbdFinalOut, sel=address[13], out=screenOrKbdOut);
+}
+
+
 }
