@@ -14,10 +14,20 @@
  * with the computer via the keyboard.
  */
 
-CHIP Computer {
 
-    IN reset;
+CHIP Computer {
+    IN reset;            // Signals whether to restart the current program (reset=1)
 
     PARTS:
-    // Put your code here:
+    // ROM32K: Program memory (read-only)
+    ROM32K(address=pc, out=instruction);
+
+    // Memory: Data memory (RAM), screen memory, and keyboard memory
+    Memory(in=outM, load=writeM, address=addressM, out=memOut);
+
+    // CPU: Central processing unit
+    CPU(inM=memOut, instruction=instruction, reset=reset,
+        outM=outM, writeM=writeM, addressM=addressM, pc=pc);
 }
+
+
